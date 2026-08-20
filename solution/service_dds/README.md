@@ -1,0 +1,1 @@
+registry link = "cr.yandex/crp8ojdcmain4m41af16/dds_service:v2026-08-20-r4"
