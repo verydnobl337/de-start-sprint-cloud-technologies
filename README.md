@@ -1,5 +1,3 @@
-# sprint-9-project
-Репозиторий для разработки проекта 9-го спринта.
 # Cloud Technologies — streaming data platform
 
 Portfolio-ready version of the `cloud-technologies` project: an event-driven data pipeline that receives order events through Apache Kafka, enriches them with Redis, persists raw events in STG, loads a Data Vault-style DDS layer in PostgreSQL, and builds CDM user/product/category counters.
