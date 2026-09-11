@@ -1,23 +1,23 @@
-# Cloud Technologies — streaming data platform
+# Cloud Technologies — потоковая платформа обработки данных
 
-Portfolio-ready version of the `cloud-technologies` project: an event-driven data pipeline that receives order events through Apache Kafka, enriches them with Redis, persists raw events in STG, loads a Data Vault-style DDS layer in PostgreSQL, and builds CDM user/product/category counters.
+Портфолио-версия проекта `cloud-technologies`: событийно-ориентированный конвейер обработки данных, который получает события о заказах через Apache Kafka, обогащает их данными из Redis, сохраняет исходные события в STG, загружает данные в слой DDS по модели Data Vault в PostgreSQL и формирует агрегаты CDM по связям пользователей, продуктов и категорий.
 
-## Architecture
+## Архитектура
 
 ```text
                  ┌──────────────────────┐
-                 │  Source order events │
-                 │       Kafka          │
+                 │   События о заказах  │
+                 │        Kafka         │
                  └──────────┬───────────┘
                             │
                             ▼
                  ┌──────────────────────┐
-                 │      STG service     │
+                 │     STG-сервис       │
                  │ Flask + APScheduler  │
                  │ Kafka + Redis + PG   │
                  └───────┬────────┬─────┘
                          │        │
-                 raw events       │ enriched events
+                 исходные события │ обогащённые события
                          │        ▼
                          │   Kafka STG topic
                          ▼        │
@@ -27,50 +27,50 @@ Portfolio-ready version of the `cloud-technologies` project: an event-driven dat
                                   │
                                   ▼
                  ┌──────────────────────┐
-                 │      DDS service     │
-                 │  Data Vault model   │
+                 │     DDS-сервис       │
+                 │    Data Vault       │
                  │ Hubs / Links / Sats  │
                  └──────────┬───────────┘
                             │
                             │ Kafka DDS topic
                             ▼
                  ┌──────────────────────┐
-                 │      CDM service     │
-                 │ counters / marts    │
-                 │        + PG         │
+                 │     CDM-сервис       │
+                 │  счётчики / витрины  │
+                 │        + PG          │
                  └──────────────────────┘
 ```
 
-## What the project demonstrates
+## Что демонстрирует проект
 
-- event-driven ETL/ELT with Apache Kafka;
-- microservice separation by warehouse layer;
-- STG ingestion and raw-event persistence;
-- enrichment from Redis;
-- Data Vault-style DDS modelling: hubs, links and satellites;
-- deterministic UUID5 keys and conflict-safe loading;
-- incremental CDM aggregation with `ON CONFLICT ... DO UPDATE`;
-- PostgreSQL access through `psycopg`;
-- containerisation with Docker Compose;
-- deployment-oriented Helm structure;
-- TLS/SASL authentication for managed Kafka and Redis connections;
-- health-check endpoints and scheduled background processing.
+* событийно-ориентированный ETL/ELT с использованием Apache Kafka;
+* разделение системы на микросервисы в соответствии со слоями хранилища данных;
+* загрузку данных в STG и сохранение исходных событий;
+* обогащение данных из Redis;
+* моделирование слоя DDS по принципам Data Vault: hubs, links и satellites;
+* использование детерминированных ключей UUID5 и безопасной обработки конфликтов;
+* инкрементальное построение агрегатов CDM с помощью `ON CONFLICT ... DO UPDATE`;
+* работу с PostgreSQL через `psycopg`;
+* контейнеризацию с использованием Docker Compose;
+* структуру проекта, ориентированную на развёртывание через Helm;
+* TLS/SASL-аутентификацию при подключении к управляемым Kafka и Redis;
+* health-check endpoints и фоновую обработку данных по расписанию.
 
-## Technology stack
+## Технологический стек
 
-| Area | Technologies |
-|---|---|
-| Language | Python 3.10 |
-| Streaming | Apache Kafka, `confluent-kafka` |
-| Processing | Flask, APScheduler |
-| Storage | PostgreSQL |
-| Cache / enrichment | Redis |
-| Containers | Docker, Docker Compose |
-| Deployment | Helm / Kubernetes structure |
-| Security | SASL/SCRAM + SSL, CA certificate |
-| Data modelling | STG, Data Vault-style DDS, CDM |
+| Область              | Технологии                      |
+| -------------------- | ------------------------------- |
+| Язык                 | Python 3.10                     |
+| Потоковая обработка  | Apache Kafka, `confluent-kafka` |
+| Обработка            | Flask, APScheduler              |
+| Хранилище            | PostgreSQL                      |
+| Кэш / обогащение     | Redis                           |
+| Контейнеризация      | Docker, Docker Compose          |
+| Развёртывание        | Helm / структура Kubernetes     |
+| Безопасность         | SASL/SCRAM + SSL, CA-сертификат |
+| Моделирование данных | STG, Data Vault-style DDS, CDM  |
 
-## Repository structure
+## Структура репозитория
 
 ```text
 cloud-technologies/
@@ -95,49 +95,51 @@ cloud-technologies/
     └── helm/
 ```
 
-## Data flow
+## Поток обработки данных
 
 ### 1. STG
 
-`service_stg` consumes an order event from Kafka, writes the original payload to `stg.order_events`, retrieves user and restaurant reference data from Redis, normalises the order structure and publishes the enriched event to the next Kafka topic.
+`service_stg` получает событие о заказе из Kafka, сохраняет исходный payload в `stg.order_events`, получает справочные данные о пользователе и ресторане из Redis, нормализует структуру заказа и публикует обогащённое событие в следующий Kafka-топик.
 
 ### 2. DDS
 
-`service_dds` consumes enriched events and maps them into a Data Vault-style model:
+`service_dds` получает обогащённые события и преобразует их в модель данных в стиле Data Vault:
 
-- **Hubs:** user, restaurant, order, product, category;
-- **Links:** order-user, order-product, product-category, product-restaurant;
-- **Satellites:** order cost, order status, product names, restaurant names, user names.
+* **Hubs:** пользователь, ресторан, заказ, продукт, категория;
+* **Links:** заказ–пользователь, заказ–продукт, продукт–категория, продукт–ресторан;
+* **Satellites:** стоимость заказа, статус заказа, названия продуктов, названия ресторанов, имена пользователей.
 
-Business keys are converted to deterministic UUID5 identifiers. Inserts use conflict handling to make repeated processing safer.
+Бизнес-ключи преобразуются в детерминированные идентификаторы UUID5. При вставке используется обработка конфликтов, что делает повторную обработку событий более безопасной.
 
 ### 3. CDM
 
-`service_cdm` consumes the DDS-derived message and maintains analytical counters for user/product and user/category relationships. Aggregates are updated atomically using PostgreSQL `ON CONFLICT ... DO UPDATE`.
+`service_cdm` получает сообщения, сформированные на основе DDS, и поддерживает аналитические счётчики для связей пользователь–продукт и пользователь–категория.
 
-## Configuration
+Агрегированные значения обновляются атомарно с использованием PostgreSQL `ON CONFLICT ... DO UPDATE`.
 
-All connection parameters are supplied through environment variables. The project does not require credentials to be committed to Git.
+## Конфигурация
 
-Typical groups:
+Все параметры подключения передаются через переменные окружения. Учётные данные не должны храниться непосредственно в Git-репозитории.
 
-- `KAFKA_*` — broker, authentication, consumer group and topics;
-- `REDIS_*` — Redis connection;
-- `PG_WAREHOUSE_*` — PostgreSQL warehouse connection.
+Основные группы переменных:
 
-For a real deployment, secrets should be injected through a secret manager or Kubernetes Secrets rather than plain environment configuration.
+* `KAFKA_*` — брокер, параметры аутентификации, consumer group и топики;
+* `REDIS_*` — параметры подключения к Redis;
+* `PG_WAREHOUSE_*` — параметры подключения к PostgreSQL.
 
-## Local launch
+Для реального развёртывания секреты рекомендуется передавать через менеджер секретов или Kubernetes Secrets, а не хранить в открытом виде в переменных окружения или конфигурационных файлах.
 
-1. Create the required environment variables from your cloud infrastructure.
-2. Place the Yandex Cloud CA certificate in the location expected by the service image, or adapt the Dockerfile for your certificate source.
-3. Start the services:
+## Локальный запуск
+
+1. Создайте необходимые переменные окружения на основе параметров вашей облачной инфраструктуры.
+2. Поместите CA-сертификат Yandex Cloud в расположение, которое ожидает Docker-образ, либо адаптируйте Dockerfile под источник сертификата.
+3. Запустите сервисы:
 
 ```bash
 docker compose -f solution/docker-compose.yaml up --build
 ```
 
-4. Verify health endpoints:
+4. Проверьте health-check endpoints:
 
 ```bash
 curl http://localhost:5011/health
@@ -145,20 +147,33 @@ curl http://localhost:5012/health
 curl http://localhost:5013/health
 ```
 
-Expected response:
+Ожидаемый ответ:
 
 ```text
 healthy
 ```
 
-## Portfolio note
+## Назначение проекта для портфолио
 
-This repository is presented as a learning/portfolio implementation of a streaming data platform. It intentionally keeps the original project architecture and processing approach while adding clearer documentation and a portfolio-oriented structure.
+Репозиторий представляет собой учебную/портфолио-реализацию потоковой платформы обработки данных.
 
-The implementation is not presented as production-complete. Before production use, the following areas should be strengthened: automated tests, schema validation, dead-letter handling, observability/metrics, idempotency across the full event chain, secrets management, CI/CD and transactional/batch optimisation.
+Проект сохраняет исходную архитектуру и основной подход к обработке данных, при этом содержит более подробную документацию и структуру, ориентированную на демонстрацию инженерных навыков.
 
-## Skills demonstrated
+Проект не позиционируется как полностью готовое production-решение.
 
-**Python · SQL · PostgreSQL · Apache Kafka · Redis · Docker · Docker Compose · Helm · Kubernetes · ETL · Data Vault · STG/DDS/CDM · event-driven architecture · microservices · cloud integrations · data modelling**
+Перед использованием в production необходимо усилить следующие компоненты:
 
-Original repository: https://github.com/verydnobl337/cloud-technologies
+* автоматизированное тестирование;
+* валидацию схем сообщений;
+* обработку ошибочных сообщений и Dead Letter Queue;
+* мониторинг и метрики;
+* сквозную идемпотентность обработки событий;
+* управление секретами;
+* CI/CD;
+* транзакционную обработку и оптимизацию batch-загрузок.
+
+## Продемонстрированные навыки
+
+**Python · SQL · PostgreSQL · Apache Kafka · Redis · Docker · Docker Compose · Helm · Kubernetes · ETL · Data Vault · STG/DDS/CDM · событийно-ориентированная архитектура · микросервисы · интеграция с облачными сервисами · моделирование данных**
+
+Исходный репозиторий: https://github.com/verydnobl337/cloud-technologies
