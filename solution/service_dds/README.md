@@ -1,1 +1,3 @@
-registry link = "cr.yandex/crp8ojdcmain4m41af16/dds_service:v2026-08-20-r4"
+# DDS service
+
+Consumes enriched orders and loads a Data Vault-style DDS layer: hubs, links and satellites. It also publishes the compact entity payload required by CDM.

@@ -1,1 +1,3 @@
-registry link = "cr.yandex/crp8ojdcmain4m41af16/cdm_service:v2026-08-20-r1"
+# CDM service
+
+Consumes DDS events and maintains user/product and user/category counters in PostgreSQL.
